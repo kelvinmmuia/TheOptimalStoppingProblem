@@ -1,0 +1,244 @@
+---
+title: "House Hunting and the Secretary Problem: The 4 W’s of Optimal Stopping"
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-float: true
+    code-fold: true
+    code-tools: true
+    css: styles.css
+editor: visual
+---
+
+## Introduction
+
+Imagine you’re on the hunt for your dream home. Tour after tour, you see one house at a time, and at each moment you must decide: Is this the one? You can only say “yes” or “no” on the spot – you can’t go back and buy an earlier house you passed. This classic dilemma is exactly the **Secretary Problem** (also called the Best-Choice or Marriage Problem), but here we’ll think of it as the house-hunting problem.
+
+In plain terms, the question is: if houses come in random order of quality and you want the very best one, how do you maximize your chances? As it turns out, there’s a neat answer involving the number $e \approx 2.718$. Let’s explore the four W's of this fascinating puzzle: **what** the problem is, **why** it exists, **when** the solution applies, and **where** you might see it in real life.
+
+------------------------------------------------------------------------
+
+## What is the problem?
+
+At its core, the Secretary (or house-hunting) problem is an **optimal stopping problem**. You observe a sequence of options one by one and must decide immediately whether to accept or reject each one. The catch? Rejection is final.
+
+You have a fixed total number $n$ of houses you plan to see, and your goal is to select the single best one. This forces you to balance two competing urges:
+
+1.  **Explore** enough to understand what "good" looks like.\
+2.  **Commit** early enough so the best option doesn't slip away.
+
+::::: panel-layout
+::: {.callout-tip icon="true" appearance="minimal"}
+### The Optimal Strategy: The 37% Rule
+
+The famous solution is to **skip the first** $\lfloor n/e \rfloor$ houses (roughly the first 37% of them). This is your "look" phase where you gather information but commit to nothing.
+
+Then, from house number $\lfloor n/e \rfloor + 1$ onward (the "leap" phase), you **buy the first house that is better than all the houses you saw in the "look" phase**. If no house in the second phase surpasses your benchmark, you must take the very last one.
+:::
+
+::: {.callout-note icon="true" appearance="minimal"}
+### Why 37%?
+
+The number comes from the mathematics of balancing the "look" and "leap" phases. It's the sweet spot that maximizes your probability of success. The number $e$ (Euler's number) naturally arises in problems of continuous growth and limits, and it governs the trade-off here.[^1]
+:::
+:::::
+
+[^1]: Euler's number, $e$, is a fundamental mathematical constant, approximately 2.718, that is the base of the natural logarithm. It appears in many areas of mathematics, including compound interest, probability, and calculus.
+
+This simple rule maximizes the chance you land the very best house, which, surprisingly, is about $1/e \approx 37\%$. It might sound low, but no other strategy can do better under these rules.
+
+### A Quick Simulation
+
+The R code below simulates our house search 10,000 times with $n=100$ homes. We skip the optimal `r floor(100 / exp(1))` houses and then apply the rule. The simulation confirms a success rate very close to the theoretical $1/e \approx 36.8\%$.
+
+```{r}
+#| label: r-simulation
+#| echo: true
+# simulate the house-hunting strategy for n=100 houses
+set.seed(123) # make the simulation reproducible
+
+simulate_best <- function(n, skip, trials = 10000) {
+  # returns proportion of runs where we picked the best house
+  wins <- 0
+  for (t in seq_len(trials)) {
+    houses <- sample.int(n)      # random ordering of house ranks 1..n
+    best_in_sample <- max(houses[1:skip]) # best rank in the first (skip) houses
+    chosen <- NA
+    
+    # from the (skip+1)-th house onward, pick first one that beats the sample
+    for (i in (skip + 1):n) {
+      if (houses[i] > best_in_sample) {
+        chosen <- houses[i]; break
+      }
+    }
+    
+    # if never chosen, you must pick the last house
+    if (is.na(chosen)) chosen <- houses[n]
+    
+    # was our choice the best possible, rank n?
+    if (chosen == n) wins <- wins + 1
+  }
+  return(wins / trials)
+}
+
+n <- 100
+opt_skip <- floor(n / exp(1))
+result <- simulate_best(n, opt_skip)
+
+cat("Simulation for n=100:\nOptimal houses to skip =", opt_skip, 
+    "\nSuccess probability from simulation ~", round(result, 4))
+
+```
+
+## Why does this problem exist?
+
+The dilemma exists because of the fundamental trade-off in any sequential choice made under uncertainty and without recall. In house-hunting, you face two ways to fail:
+
+-   *Stopping too soon (under-exploration):* If you buy one of the first few houses, you have very little information and will likely miss out on a much better house later.
+
+-   *Stopping too late (over-exploration):* If you wait too long, the best house might have been in the group you rejected, forcing you to settle for a lesser option at the end.
+
+The 37% rule is the mathematically proven sweet spot that balances these two risks. It ensures you see just enough to set a high benchmark, but still leave enough houses in the pool where the best one might realistically appear.
+
+## When does the 37% rule apply?
+
+The classic result is optimal under specific conditions. Here's when it works best, and when it needs adjusting.
+
+::: panel-tabset
+### Known n
+
+You need to have a known (or reasonably estimated) horizon of houses, $n$, to visit.
+
+-   **In reality:** You might not know the exact number. However, if you have a deadline (e.g., "I will see houses for 30 days") or a fixed list from an agent, you can use that as your $n$. A rough rule of thumb for an unknown $n$ is to spend 37% of your available search time in the "look" phase.
+
+### No Do-overs
+
+You cannot go back to houses you previously rejected.
+
+-   **In reality:** Sometimes you can revisit a house, but there's a risk it may have been sold. If there's a "cooldown" period where you can go back, the math changes. However, the core insight remains: gather information first, then be ready to leap.
+
+### Best or Nothing
+
+You must genuinely want the single best house, not just a "good enough" one.
+
+-   **In reality:** If you are satisfied with, say, a top-three house, the optimal cutoff is lower than 37%. Variants of the problem exist to handle these different goals. For our purposes, we assume you're a maximizer!
+
+### Random Order
+
+The houses must appear in a random order with respect to their quality.
+
+-   **In reality:** If a real estate agent shows you houses in decreasing order of quality to close a deal quickly, the assumptions are violated. The randomness is key to the strategy's success.
+:::
+
+### Visualizing the Optimal Strategy
+
+Why is skipping 37% the magic number? The plot below shows the results of simulating the house-hunting problem for every possible "skip" value from 0 to 99 (for $n=100$). You can see that the probability of success peaks right around the theoretical optimum of 36.
+
+```{r}
+#| label: r-visualization
+#| message: false
+#| warning: false
+#| fig-cap: "The probability of picking the best house peaks when the number of skipped houses is close to the theoretical optimum of n/e $\\approx37$."
+#| fig-width: 8
+#| fig-height: 5
+
+#load required libraries
+library(ggplot2)
+library(dplyr)
+library(ggpubr)
+
+# Function to calculate success probability for a given skip value
+calculate_success_prob <- function(n, skip, trials = 10000) {
+  successes <- 0
+  for (i in 1:trials) {
+    ranks <- sample(1:n)
+    threshold_val <- if (skip > 0) max(ranks[1:skip]) else 0
+    choice <- NA
+    if (skip < n) {
+      for (j in (skip + 1):n) {
+        if (ranks[j] > threshold_val) {
+          choice <- ranks[j]
+          break
+        }
+      }
+    }
+    if (is.na(choice)) {
+      choice <- ranks[n]
+    }
+    if (choice == n) {
+      successes <- successes + 1
+    }
+  }
+  return(successes / trials)
+}
+
+# Simulate for a range of skip values
+n <- 100
+skip_values <- 0:99
+prob_fun <- function(k, n) { (k/n) * sum(1/((k):(n-1))) }
+results_df <- tibble(
+  skip = skip_values,
+  prob = sapply(skip_values, prob_fun, n=n))
+
+# Find the optimal skip value from the data
+optimal_skip_calc <- results_df$skip[which.max(results_df$prob)]
+max_prob_calc <- max(results_df$prob)
+theoretical_skip <- floor(n / exp(1))
+
+# Create the plot
+ggplot(results_df, aes(x = skip, y = prob)) +
+  geom_line(color = "#0a9396", size = 1.2) +
+  geom_vline(xintercept = theoretical_skip, 
+             linetype = "dashed", color = "#ee9b00", size = 1) +
+  geom_point(aes(x = optimal_skip_calc, y = max_prob_calc), 
+             color = "#e63946", size = 5, shape = 18) +
+  annotate("text", x = theoretical_skip + 3, y = 0.40, 
+           label = paste("Theoretical Optimum\nskip =", theoretical_skip), 
+           color = "#ee9b00", hjust = 0, fontface = "bold") +
+  annotate("text", x = optimal_skip_calc - 14, y = max_prob_calc - 0.04, 
+           label = paste("Peak Success Rate\n~", 
+                         scales::percent(max_prob_calc, accuracy=0.1)), 
+           color = "#e63946", hjust = 0, fontface = "bold") +
+  scale_y_continuous(labels = scales::percent_format(accuracy=1)) +
+  labs(
+    title = "Finding the Optimal Stopping Point",
+    subtitle = paste("Success Rate vs. Number of Houses Skipped (for n =", n,")"),
+    x = "Number of Houses to Skip ('Look' Phase)",
+    y = "Probability of Picking the Best House") +
+  theme_pubr(base_size = 14)+
+  theme(
+    plot.title = element_text(face = "bold", color = "#005f73"),
+    plot.subtitle = element_text(color = "#2a9d8f", margin = margin(b=10)),
+    panel.grid.minor = element_blank(),
+    axis.title = element_text(face="bold.italic"))
+
+```
+
+## Where is this useful in real life?
+
+This house-hunting scenario is a stand-in for many real-world decisions where you face a sequence of offers and must decide "now or never."
+
+-   **Hiring or Admissions:** The original "secretary problem" was framed around interviewing job candidates. The 37% rule maximizes the probability of picking the best applicant when you can't go back.
+
+-   **Dating and Relationships:** The "marriage problem" is a famous variant. You date a number of people and want to find the best match for a lifelong partner. The 37% rule has been famously, and sometimes humorously, applied to dating. One popular account describes a mathematician who calculated her optimal "look" phase to end at age 26.1, after which she would propose to the next partner who was better than all previous ones. Famously, her real-life experiment did not end in a successful marriage, proving that love (and life) is often more complex than an algorithm! {.aside}
+
+-   **Auctions and Bids:** If you're selling an item and receiving offers one by one, the same logic helps you decide when to accept an offer versus holding out for a better one.
+
+-   **Everyday Choices:** Even simple decisions like finding a parking space or choosing the fastest-moving lane at a tollbooth can be viewed through this lens. You sample a few early options to get a baseline, then commit to the next one that beats that baseline.
+
+## Summary
+
+The house-hunting version of the secretary problem offers a surprisingly simple rule of thumb: skip the first 37% of your options, then pick the very next one that’s better than any you’ve seen before. This strategy gives you the best possible chance (around 37%) of securing the very best option.
+
+It works by perfectly balancing the need to explore (gather data) and exploit (make a choice). While 37% is not a guarantee, it's the provably best you can do under the "no-take-backs" rule. Most people intuitively stop too early or too late, but knowing this theory can help calibrate your search.
+
+This insight comes from a branch of mathematics called optimal stopping theory, which is dedicated to finding the best time to take a particular action in order to maximize reward or minimize cost. {.aside}
+
+So, whenever you face an irreversible search—be it for houses, jobs, or even parking spaces—remember the elegant 37% solution. Happy hunting!
+
+## Sources
+
+1.  [www.krooonal.com/optimal-stopping](https://www.krooonal.com/optimal-stopping/#:~:text=in%20computer%20science,picking%20the%20overall%20best%20candidate)
+
+2.  [www.scientificamerican.com/article](https://www.scientificamerican.com/article/this-elegant-math-problem-could-help-you-make-the-best-choice-in-house/#:~:text=Amazingly%2C%20the%20optimal%20strategy%20results,option%2C%20take%20the%20final%20one)

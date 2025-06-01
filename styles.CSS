@@ -1,0 +1,24 @@
+<style>
+/* Custom CSS for enhanced styling */
+h2 {
+  color: #005f73; /* Deep Teal */
+  border-bottom: 3px solid #94d2bd;
+  padding-bottom: 8px;
+  margin-top: 40px;
+}
+
+h3 {
+  color: #0a9396; /* Lighter Teal */
+}
+
+/* Styling for asides/margin notes */
+.aside {
+  font-size: 0.9em;
+  color: #555;
+  background-color: #f8f9fa;
+  border-left: 4px solid #0a9396;
+  padding: 15px;
+  margin-top: 15px;
+  border-radius: 5px;
+}
+</style>
